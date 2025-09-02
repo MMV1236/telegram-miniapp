@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FoodLens Mini App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #fafafa;
+      padding: 20px;
+    }
+    h1 { color: #333; }
+    button {
+      padding: 10px 20px;
+      background: #0088cc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Привет из Mini App!</h1>
+  <p>Здесь будет функционал FoodLens.</p>
+  <button id="sendData">Отправить данные боту</button>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    document.getElementById('sendData').addEventListener('click', () => {
+      tg.sendData(JSON.stringify({ action: 'hello', value: 42 }));
+    });
+  </script>
+</body>
+</html>
