@@ -42,7 +42,11 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
 
-    document.getElementById('uploadBtn').addEventListener('click', async () => {
+    // Фиксированный адрес текущего ngrok-туннеля
+    const SERVER_URL = 'https://fe8754d31706.ngrok-free.app';
+
+    const uploadBtn = document.getElementById('uploadBtn');
+    uploadBtn.addEventListener('click', async () => {
       const fileInput = document.getElementById('photoInput');
       const statusEl = document.getElementById('status');
 
@@ -55,14 +59,18 @@
       formData.append('photo', fileInput.files[0]);
 
       statusEl.textContent = 'Загрузка...';
+      uploadBtn.disabled = true;
 
       try {
-        const res = await fetch('/upload', {
+        const res = await fetch(`${SERVER_URL}/upload`, {
           method: 'POST',
           body: formData
         });
-        const data = await res.json();
-        if (data.ok) {
+
+        let data = {};
+        try { data = await res.json(); } catch (_) {}
+
+        if (res.ok && data.ok) {
           statusEl.textContent = 'Фото успешно загружено!';
         } else {
           statusEl.textContent = 'Ошибка при загрузке';
@@ -70,6 +78,8 @@
       } catch (err) {
         console.error(err);
         statusEl.textContent = 'Ошибка соединения с сервером';
+      } finally {
+        uploadBtn.disabled = false;
       }
     });
   </script>
