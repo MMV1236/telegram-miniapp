@@ -17,10 +17,6 @@
       font-size: 16px;
       margin-top: 10px;
     }
-    input {
-      width: 100%;
-      box-sizing: border-box;
-    }
     button {
       background: #0088cc;
       color: white;
@@ -28,25 +24,53 @@
       border-radius: 5px;
       cursor: pointer;
     }
+    #status {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #555;
+    }
   </style>
 </head>
 <body>
-  <h1>FoodLens Mini App</h1>
-  <p>Введите продукт, чтобы получить рецепт:</p>
-  <input id="product" type="text" placeholder="Например: яблоко">
-  <button id="sendData">Отправить боту</button>
+  <h1>FoodLens</h1>
+  <p>Сделайте фото холодильника или выберите готовое изображение:</p>
+  <input id="photoInput" type="file" accept="image/*" capture="environment">
+  <button id="uploadBtn">Загрузить</button>
+  <div id="status"></div>
 
   <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
 
-    document.getElementById('sendData').addEventListener('click', () => {
-      const product = document.getElementById('product').value.trim();
-      if (!product) {
-        alert('Введите название продукта');
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+      const fileInput = document.getElementById('photoInput');
+      const statusEl = document.getElementById('status');
+
+      if (!fileInput.files.length) {
+        alert('Выберите или сделайте фото');
         return;
       }
-      tg.sendData(JSON.stringify({ product }));
+
+      const formData = new FormData();
+      formData.append('photo', fileInput.files[0]);
+
+      statusEl.textContent = 'Загрузка...';
+
+      try {
+        const res = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.ok) {
+          statusEl.textContent = 'Фото успешно загружено!';
+        } else {
+          statusEl.textContent = 'Ошибка при загрузке';
+        }
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Ошибка соединения с сервером';
+      }
     });
   </script>
 </body>
