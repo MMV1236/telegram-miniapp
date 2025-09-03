@@ -64,7 +64,10 @@
       try {
         const res = await fetch(`${SERVER_URL}/upload`, {
           method: 'POST',
-          body: formData
+          body: formData,
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
         });
 
         let data = {};
@@ -85,4 +88,3 @@
   </script>
 </body>
 </html>
-
