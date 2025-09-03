@@ -12,26 +12,41 @@
       padding: 20px;
     }
     h1 { color: #333; }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    input {
+      width: 100%;
+      box-sizing: border-box;
+    }
     button {
-      padding: 10px 20px;
       background: #0088cc;
       color: white;
       border: none;
       border-radius: 5px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>Привет из Mini App!</h1>
-  <p>Здесь будет функционал FoodLens.</p>
-  <button id="sendData">Отправить данные боту</button>
+  <h1>FoodLens Mini App</h1>
+  <p>Введите продукт, чтобы получить рецепт:</p>
+  <input id="product" type="text" placeholder="Например: яблоко">
+  <button id="sendData">Отправить боту</button>
 
   <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
 
     document.getElementById('sendData').addEventListener('click', () => {
-      tg.sendData(JSON.stringify({ action: 'hello', value: 42 }));
+      const product = document.getElementById('product').value.trim();
+      if (!product) {
+        alert('Введите название продукта');
+        return;
+      }
+      tg.sendData(JSON.stringify({ product }));
     });
   </script>
 </body>
