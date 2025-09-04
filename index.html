@@ -246,8 +246,23 @@
   </div>
 
   <script>
+    // Simple test to check if JavaScript is running
+    console.log('JavaScript is loading...');
+    
     const tg = window.Telegram.WebApp;
+    console.log('Telegram WebApp object:', tg);
     tg.expand();
+    console.log('WebApp expanded');
+
+    // Wait for DOM to be ready
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM ready, initializing...');
+      initializeApp();
+    });
+    
+    // Initialize app after DOM is ready
+    function initializeApp() {
+      console.log('Initializing FoodLens app...');
 
     // Фиксированный адрес текущего ngrok-туннеля
     const SERVER_URL = 'https://320a1ce162f1.ngrok-free.app';
@@ -437,12 +452,17 @@
     });
 
     // Показ имени выбранного файла
-    fileInput.addEventListener('change', (e) => {
+    fileInput.addEventListener('change', function(e) {
+      console.log('File input changed:', e.target.files);
       if (e.target.files.length > 0) {
-        const fileName = e.target.files[0].name;
-        updateStatus(`Файл выбран: ${fileName}`, 'success');
+        var fileName = e.target.files[0].name;
+        console.log('File selected:', fileName);
+        updateStatus('Файл выбран: ' + fileName, 'success');
       }
     });
+    
+    console.log('App initialization complete');
+  }
   </script>
 </body>
 </html>
