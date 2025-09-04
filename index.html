@@ -328,11 +328,15 @@
 
     // Основная функция анализа
     analyzeBtn.addEventListener('click', async () => {
+      console.log('Кнопка анализа нажата');
+      
       if (!fileInput.files.length) {
+        console.log('Файл не выбран');
         updateStatus('Пожалуйста, выберите фото', 'error');
         return;
       }
 
+      console.log('Файл выбран:', fileInput.files[0].name);
       const formData = new FormData();
       formData.append('photo', fileInput.files[0]);
 
@@ -342,6 +346,8 @@
       updateStatus('Анализируем фото и распознаем продукты...', 'loading');
       analyzeBtn.disabled = true;
 
+      console.log('Отправляем запрос на:', `${SERVER_URL}/analyze`);
+      
       try {
         const response = await fetch(`${SERVER_URL}/analyze`, {
           method: 'POST',
@@ -351,7 +357,9 @@
           }
         });
 
+        console.log('Получен ответ, статус:', response.status);
         const result = await response.json();
+        console.log('Данные ответа:', result);
 
         if (!response.ok) {
           throw new Error(result.error || 'Ошибка сервера');
@@ -377,7 +385,7 @@
         }
 
       } catch (error) {
-        console.error('Ошибка:', error);
+        console.error('Ошибка запроса:', error);
         updateStatus(`Ошибка: ${error.message}`, 'error');
         
       } finally {
@@ -395,4 +403,3 @@
   </script>
 </body>
 </html>
-
