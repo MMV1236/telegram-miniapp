@@ -260,11 +260,16 @@
     const recipesListEl = document.getElementById('recipesList');
 
     // Обновление статуса
-    function updateStatus(message, type = 'info') {
+    function updateStatus(message, type) {
+      console.log('updateStatus called:', message, type);
       statusEl.textContent = message;
-      statusEl.className = `status-${type}`;
+      statusEl.className = 'status-' + type;
       if (type === 'loading') {
-        statusEl.innerHTML = `<div class="loading-spinner"></div>${message}`;
+        const spinner = document.createElement('div');
+        spinner.className = 'loading-spinner';
+        statusEl.innerHTML = '';
+        statusEl.appendChild(spinner);
+        statusEl.appendChild(document.createTextNode(message));
       }
     }
 
@@ -368,7 +373,7 @@
     }
 
     // Основная функция анализа
-    analyzeBtn.addEventListener('click', async () => {
+    analyzeBtn.addEventListener('click', function() {
       console.log('Кнопка анализа нажата');
       
       if (!fileInput.files.length) {
@@ -378,7 +383,7 @@
       }
 
       console.log('Файл выбран:', fileInput.files[0].name);
-      const formData = new FormData();
+      var formData = new FormData();
       formData.append('photo', fileInput.files[0]);
 
       // Скрываем результаты предыдущего анализа
@@ -387,25 +392,22 @@
       updateStatus('Анализируем фото и распознаем продукты...', 'loading');
       analyzeBtn.disabled = true;
 
-      console.log('Отправляем запрос на:', `${SERVER_URL}/analyze`);
+      console.log('Отправляем запрос на:', SERVER_URL + '/analyze');
       
-      try {
-        const response = await fetch(`${SERVER_URL}/analyze`, {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'ngrok-skip-browser-warning': 'true'
-          }
-        });
-
-        console.log('Получен ответ, статус:', response.status);
-        const result = await response.json();
-        console.log('Данные ответа:', result);
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Ошибка сервера');
+      fetch(SERVER_URL + '/analyze', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
         }
-
+      })
+      .then(function(response) {
+        console.log('Получен ответ, статус:', response.status);
+        return response.json();
+      })
+      .then(function(result) {
+        console.log('Данные ответа:', result);
+        
         if (result.ok && result.analysis) {
           updateStatus('Анализ завершен успешно!', 'success');
           
@@ -417,21 +419,21 @@
           resultsEl.classList.remove('hidden');
           
           // Плавно прокручиваем к результатам
-          setTimeout(() => {
+          setTimeout(function() {
             resultsEl.scrollIntoView({ behavior: 'smooth' });
           }, 300);
           
         } else {
           throw new Error('Неожиданный формат ответа');
         }
-
-      } catch (error) {
+      })
+      .catch(function(error) {
         console.error('Ошибка запроса:', error);
-        updateStatus(`Ошибка: ${error.message}`, 'error');
-        
-      } finally {
+        updateStatus('Ошибка: ' + error.message, 'error');
+      })
+      .finally(function() {
         analyzeBtn.disabled = false;
-      }
+      });
     });
 
     // Показ имени выбранного файла
