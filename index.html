@@ -7,36 +7,250 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     body {
-      font-family: sans-serif;
-      background: #fafafa;
-      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      padding: 16px;
+      margin: 0;
+      line-height: 1.5;
     }
-    h1 { color: #333; }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 { 
+      color: #333; 
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    .upload-section {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
     input, button {
-      padding: 10px;
+      padding: 12px;
       font-size: 16px;
       margin-top: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    input[type="file"] {
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      background: #fafafa;
     }
     button {
       background: #0088cc;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
       cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #006ba3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
     }
     #status {
       margin-top: 15px;
       font-size: 14px;
       color: #555;
+      text-align: center;
+    }
+    .results {
+      margin-top: 20px;
+    }
+    .food-items {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .food-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .food-item:last-child {
+      border-bottom: none;
+    }
+    .food-name {
+      font-weight: 500;
+      color: #333;
+    }
+    .confidence {
+      background: #e3f2fd;
+      color: #1976d2;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .recipes {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .recipe {
+      padding: 16px;
+      border-bottom: 1px solid #eee;
+    }
+    .recipe:last-child {
+      border-bottom: none;
+    }
+    .recipe-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    .recipe-description {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+    .recipe-meta {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .cooking-time {
+      background: #f0f9ff;
+      color: #0369a1;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .ingredients {
+      margin-bottom: 12px;
+    }
+    .ingredients-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .ingredients-list {
+      color: #666;
+      font-size: 13px;
+    }
+    .instructions {
+      font-size: 13px;
+    }
+    .instructions-title {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    .instruction-step {
+      color: #666;
+      margin-bottom: 4px;
+      padding-left: 16px;
+      position: relative;
+    }
+    .instruction-step:before {
+      content: counter(step-counter);
+      counter-increment: step-counter;
+      position: absolute;
+      left: 0;
+      background: #0088cc;
+      color: white;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      top: 2px;
+    }
+    .instructions {
+      counter-reset: step-counter;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .loading {
+      text-align: center;
+      padding: 20px;
+    }
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #0088cc;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .error {
+      background: #fee;
+      border: 1px solid #fcc;
+      color: #c33;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <h1>FoodLens</h1>
-  <p>Сделайте фото холодильника или выберите готовое изображение:</p>
-  <input id="photoInput" type="file" accept="image/*" capture="environment">
-  <button id="uploadBtn">Загрузить</button>
-  <div id="status"></div>
+  <div class="container">
+    <h1>🍽 FoodLens</h1>
+    <p class="subtitle">Сфотографируйте продукты и получите рецепты!</p>
+    
+    <div class="upload-section">
+      <input id="photoInput" type="file" accept="image/*" capture="environment" placeholder="Выберите или сделайте фото">
+      <button id="uploadBtn">📷 Анализировать фото</button>
+      <div id="status"></div>
+    </div>
+
+    <div id="results" class="results" style="display: none;">
+      <div id="foodItems" style="display: none;">
+        <div class="section-title">
+          🥗 Распознанные продукты
+        </div>
+        <div class="food-items" id="foodList"></div>
+      </div>
+
+      <div id="recipes" style="display: none;">
+        <div class="section-title">
+          👨‍🍳 Рекомендуемые рецепты
+        </div>
+        <div class="recipes" id="recipeList"></div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const tg = window.Telegram.WebApp;
@@ -46,9 +260,15 @@
     const SERVER_URL = 'https://a2a40597af9c.ngrok-free.app';
 
     const uploadBtn = document.getElementById('uploadBtn');
+    const statusEl = document.getElementById('status');
+    const resultsEl = document.getElementById('results');
+    const foodItemsEl = document.getElementById('foodItems');
+    const recipesEl = document.getElementById('recipes');
+    const foodListEl = document.getElementById('foodList');
+    const recipeListEl = document.getElementById('recipeList');
+
     uploadBtn.addEventListener('click', async () => {
       const fileInput = document.getElementById('photoInput');
-      const statusEl = document.getElementById('status');
 
       if (!fileInput.files.length) {
         alert('Выберите или сделайте фото');
@@ -58,8 +278,10 @@
       const formData = new FormData();
       formData.append('photo', fileInput.files[0]);
 
-      statusEl.textContent = 'Загрузка...';
+      // Show loading state
+      showLoading();
       uploadBtn.disabled = true;
+      resultsEl.style.display = 'none';
 
       try {
         const res = await fetch(`${SERVER_URL}/upload`, {
@@ -74,18 +296,104 @@
         try { data = await res.json(); } catch (_) {}
 
         if (res.ok && data.ok) {
-          statusEl.textContent = 'Фото успешно загружено!';
+          hideLoading();
+          displayResults(data);
         } else {
-          statusEl.textContent = 'Ошибка при загрузке';
+          hideLoading();
+          showError(data.error || 'Ошибка при обработке изображения');
         }
       } catch (err) {
         console.error(err);
-        statusEl.textContent = 'Ошибка соединения с сервером';
+        hideLoading();
+        showError('Ошибка соединения с сервером');
       } finally {
         uploadBtn.disabled = false;
       }
     });
+
+    function showLoading() {
+      statusEl.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <div>Анализируем изображение...</div>
+        </div>
+      `;
+    }
+
+    function hideLoading() {
+      statusEl.innerHTML = '';
+    }
+
+    function showError(message) {
+      statusEl.innerHTML = `<div class="error">❌ ${message}</div>`;
+    }
+
+    function displayResults(data) {
+      resultsEl.style.display = 'block';
+      
+      // Display recognized foods
+      if (data.recognizedFoods && data.recognizedFoods.length > 0) {
+        displayFoods(data.recognizedFoods);
+        foodItemsEl.style.display = 'block';
+      } else {
+        foodItemsEl.style.display = 'none';
+        if (data.recognitionError) {
+          showError(`Ошибка распознавания: ${data.recognitionError}`);
+        } else {
+          statusEl.innerHTML = '<div class="error">🤔 Не удалось распознать продукты на изображении</div>';
+        }
+      }
+
+      // Display recipes
+      if (data.recipes && data.recipes.length > 0) {
+        displayRecipes(data.recipes);
+        recipesEl.style.display = 'block';
+      } else {
+        recipesEl.style.display = 'none';
+        if (data.recipeError && data.recognizedFoods && data.recognizedFoods.length > 0) {
+          showError(`Ошибка генерации рецептов: ${data.recipeError}`);
+        }
+      }
+
+      if (!data.recognizedFoods?.length && !data.recipes?.length) {
+        statusEl.innerHTML = '<div class="error">😕 Не удалось обработать изображение. Попробуйте другое фото.</div>';
+      } else {
+        statusEl.innerHTML = '<div style="color: #28a745; text-align: center;">✅ Обработка завершена!</div>';
+      }
+    }
+
+    function displayFoods(foods) {
+      foodListEl.innerHTML = foods.map(food => `
+        <div class="food-item">
+          <span class="food-name">${food.displayName}</span>
+          <span class="confidence">${Math.round(food.confidence * 100)}%</span>
+        </div>
+      `).join('');
+    }
+
+    function displayRecipes(recipes) {
+      recipeListEl.innerHTML = recipes.map(recipe => `
+        <div class="recipe">
+          <div class="recipe-title">${recipe.name}</div>
+          <div class="recipe-description">${recipe.description}</div>
+          <div class="recipe-meta">
+            <div class="cooking-time">⏱ ${recipe.cookingTime}</div>
+          </div>
+          ${recipe.mainIngredients && recipe.mainIngredients.length > 0 ? `
+            <div class="ingredients">
+              <div class="ingredients-title">Основные ингредиенты:</div>
+              <div class="ingredients-list">${recipe.mainIngredients.join(', ')}</div>
+            </div>
+          ` : ''}
+          <div class="instructions">
+            <div class="instructions-title">Приготовление:</div>
+            ${recipe.instructions.map(step => `
+              <div class="instruction-step">${step}</div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
   </script>
 </body>
 </html>
-
