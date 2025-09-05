@@ -303,9 +303,17 @@
           showError(data.error || 'Ошибка при обработке изображения');
         }
       } catch (err) {
-        console.error(err);
+        console.error('Network error details:', err);
         hideLoading();
-        showError('Ошибка соединения с сервером');
+        
+        // More specific error messages
+        if (err.message.includes('Failed to fetch')) {
+          showError('Нет связи с сервером. Проверьте интернет-соединение.');
+        } else if (err.message.includes('timeout')) {
+          showError('Превышено время ожидания. Попробуйте ещё раз.');
+        } else {
+          showError('Ошибка соединения с сервером. Попробуйте позже.');
+        }
       } finally {
         uploadBtn.disabled = false;
       }
@@ -340,7 +348,7 @@
         if (data.recognitionError) {
           showError(`Ошибка распознавания: ${data.recognitionError}`);
         } else {
-          statusEl.innerHTML = '<div class="error">🤔 Не удалось распознать продукты на изображении</div>';
+          statusEl.innerHTML = '<div style="color: #f39c12; text-align: center;">🤔 Не удалось автоматически распознать продукты. Попробуйте другое фото или опишите продукты в чате бота.</div>';
         }
       }
 
