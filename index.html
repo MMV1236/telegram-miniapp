@@ -365,7 +365,7 @@
     function displayFoods(foods) {
       foodListEl.innerHTML = foods.map(food => `
         <div class="food-item">
-          <span class="food-name">${food.displayName}</span>
+          <span class="food-name">${food.displayName}${food.suggested ? ' 🤖' : ''}</span>
           <span class="confidence">${Math.round(food.confidence * 100)}%</span>
         </div>
       `).join('');
