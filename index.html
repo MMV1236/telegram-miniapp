@@ -230,8 +230,10 @@
     <p class="subtitle">Сфотографируйте продукты и получите рецепты!</p>
     
     <div class="upload-section">
+      <div id="serviceStatus" style="display: none;"></div>
       <input id="photoInput" type="file" accept="image/*" capture="environment" placeholder="Выберите или сделайте фото">
       <button id="uploadBtn">📷 Анализировать фото</button>
+      <button id="checkServicesBtn" style="background: #6c757d; margin-top: 5px;">🔍 Проверить сервисы</button>
       <div id="status"></div>
     </div>
 
@@ -260,12 +262,19 @@
     const SERVER_URL = 'https://8838f8430a6a.ngrok-free.app';
 
     const uploadBtn = document.getElementById('uploadBtn');
+    const checkServicesBtn = document.getElementById('checkServicesBtn');
     const statusEl = document.getElementById('status');
+    const serviceStatusEl = document.getElementById('serviceStatus');
     const resultsEl = document.getElementById('results');
     const foodItemsEl = document.getElementById('foodItems');
     const recipesEl = document.getElementById('recipes');
     const foodListEl = document.getElementById('foodList');
     const recipeListEl = document.getElementById('recipeList');
+
+    // Check services on page load
+    checkServices();
+
+    checkServicesBtn.addEventListener('click', checkServices);
 
     uploadBtn.addEventListener('click', async () => {
       const fileInput = document.getElementById('photoInput');
@@ -334,6 +343,79 @@
 
     function showError(message) {
       statusEl.innerHTML = `<div class="error">❌ ${message}</div>`;
+    }
+
+    async function checkServices() {
+      console.log('🔍 Checking services...');
+      checkServicesBtn.disabled = true;
+      checkServicesBtn.textContent = '🔄 Проверка...';
+      
+      try {
+        const response = await fetch(`${SERVER_URL}/status`, {
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
+        
+        if (response.ok) {
+          const status = await response.json();
+          displayServiceStatus(status);
+        } else {
+          serviceStatusEl.innerHTML = '<div class="error">❌ Не удалось проверить статус сервисов</div>';
+        }
+      } catch (error) {
+        console.error('Service check failed:', error);
+        serviceStatusEl.innerHTML = '<div class="error">❌ Ошибка проверки сервисов</div>';
+      } finally {
+        checkServicesBtn.disabled = false;
+        checkServicesBtn.textContent = '🔍 Проверить сервисы';
+      }
+    }
+
+    function displayServiceStatus(status) {
+      const isOperational = status.overall.status === 'operational';
+      
+      let html = `
+        <div style="
+          background: ${isOperational ? '#d4edda' : '#fff3cd'};
+          border: 1px solid ${isOperational ? '#c3e6cb' : '#ffeaa7'};
+          color: ${isOperational ? '#155724' : '#856404'};
+          padding: 12px;
+          border-radius: 8px;
+          margin-bottom: 16px;
+          font-size: 14px;
+        ">
+          <div style="font-weight: 600; margin-bottom: 8px;">
+            ${status.overall.message}
+          </div>
+          <div style="font-size: 12px; opacity: 0.8;">
+            Последняя проверка: ${new Date(status.timestamp).toLocaleTimeString()}
+          </div>
+        </div>
+        <details style="margin-bottom: 16px; font-size: 13px;">
+          <summary style="cursor: pointer; font-weight: 500;">🛠️ Подробности сервисов</summary>
+          <div style="margin-top: 8px; padding-left: 16px;">
+      `;
+      
+      status.services.forEach(service => {
+        const statusIcon = service.status === 'available' ? '✅' : 
+                          service.status === 'not_configured' ? '⚠️' : '❌';
+        
+        html += `
+          <div style="margin-bottom: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+            <div style="font-weight: 500;">${statusIcon} ${service.name}</div>
+            <div style="color: #666; font-size: 12px;">${service.message}</div>
+          </div>
+        `;
+      });
+      
+      html += `
+          </div>
+        </details>
+      `;
+      
+      serviceStatusEl.innerHTML = html;
+      serviceStatusEl.style.display = 'block';
     }
 
     function displayResults(data) {
