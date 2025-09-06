@@ -222,6 +222,113 @@
       margin: 16px 0;
       font-size: 14px;
     }
+    .ingredients-editor {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .ingredient-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      margin: 4px 0;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+    .ingredient-item.editing {
+      background: #e3f2fd;
+      border-color: #2196f3;
+    }
+    .ingredient-name {
+      flex: 1;
+      font-weight: 500;
+      color: #333;
+    }
+    .ingredient-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-weight: 500;
+      color: #333;
+      padding: 4px;
+      font-size: 14px;
+    }
+    .ingredient-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .ingredient-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      width: auto;
+      margin: 0;
+    }
+    .edit-btn {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+    .save-btn {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+    .delete-btn {
+      background: #ffebee;
+      color: #c62828;
+    }
+    .add-ingredient {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .add-ingredient input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      margin: 0;
+    }
+    .add-ingredient button {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 0;
+      width: auto;
+    }
+    .generate-recipes-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      width: 100%;
+      margin-top: 16px;
+    }
+    .generate-recipes-btn:hover {
+      background: #218838;
+    }
+    .generate-recipes-btn:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -243,6 +350,20 @@
           🥗 Распознанные продукты
         </div>
         <div class="food-items" id="foodList"></div>
+      </div>
+
+      <div id="ingredientsEditor" class="ingredients-editor" style="display: none;">
+        <div class="section-title">
+          ✏️ Редактировать ингредиенты
+        </div>
+        <div id="ingredientsList"></div>
+        <div class="add-ingredient">
+          <input type="text" id="newIngredient" placeholder="Добавить ингредиент...">
+          <button onclick="addIngredient()">➕ Добавить</button>
+        </div>
+        <button id="generateRecipesBtn" class="generate-recipes-btn" onclick="generateRecipes()">
+          👨‍🍳 Сгенерировать рецепты
+        </button>
       </div>
 
       <div id="recipes" style="display: none;">
@@ -267,9 +388,16 @@
     const serviceStatusEl = document.getElementById('serviceStatus');
     const resultsEl = document.getElementById('results');
     const foodItemsEl = document.getElementById('foodItems');
+    const ingredientsEditorEl = document.getElementById('ingredientsEditor');
     const recipesEl = document.getElementById('recipes');
     const foodListEl = document.getElementById('foodList');
+    const ingredientsListEl = document.getElementById('ingredientsList');
     const recipeListEl = document.getElementById('recipeList');
+    const generateRecipesBtnEl = document.getElementById('generateRecipesBtn');
+
+    // Global variables
+    let currentIngredients = [];
+    let currentFilename = '';
 
     // Check services on page load
     checkServices();
@@ -288,11 +416,17 @@
       formData.append('photo', fileInput.files[0]);
 
       // Show loading state
-      showLoading();
+      showLoading('Анализируем изображение и распознаем продукты...');
       uploadBtn.disabled = true;
+      
+      // Reset UI
       resultsEl.style.display = 'none';
+      foodItemsEl.style.display = 'none';
+      ingredientsEditorEl.style.display = 'none';
+      recipesEl.style.display = 'none';
 
       try {
+        // Отправляем запрос только на распознавание еды
         const res = await fetch(`${SERVER_URL}/upload`, {
           method: 'POST',
           body: formData,
@@ -306,7 +440,21 @@
 
         if (res.ok && data.ok) {
           hideLoading();
-          displayResults(data);
+          
+          if (data.recognizedFoods && data.recognizedFoods.length > 0) {
+            // Показываем распознанные продукты
+            displayFoodRecognitionResults(data);
+            
+            // Подготавливаем редактор ингредиентов
+            currentIngredients = data.recognizedFoods.map(food => food.displayName);
+            currentFilename = data.filename;
+            
+            showIngredientsEditor();
+            statusEl.innerHTML = '<div style="color: #28a745; text-align: center;">✅ Продукты распознаны! Отредактируйте список и нажмите "Сгенерировать рецепты"</div>';
+          } else {
+            hideLoading();
+            showError('Не удалось распознать продукты. Попробуйте другое фото.');
+          }
         } else {
           hideLoading();
           showError(data.error || 'Ошибка при обработке изображения');
@@ -328,11 +476,11 @@
       }
     });
 
-    function showLoading() {
+    function showLoading(message = 'Анализируем изображение...') {
       statusEl.innerHTML = `
         <div class="loading">
           <div class="spinner"></div>
-          <div>Анализируем изображение...</div>
+          <div>${message}</div>
         </div>
       `;
     }
@@ -464,7 +612,7 @@
     function displayRecipes(recipes) {
       recipeListEl.innerHTML = recipes.map(recipe => `
         <div class="recipe">
-          <div class="recipe-title">${recipe.name}</div>
+          <div class="recipe-title">${recipe.name || recipe.title || 'Unnamed Recipe'}</div>
           <div class="recipe-description">${recipe.description}</div>
           <div class="recipe-meta">
             <div class="cooking-time">⏱ ${recipe.cookingTime}</div>
@@ -483,6 +631,152 @@
           </div>
         </div>
       `).join('');
+    }
+
+    // Новые функции для работы с ингредиентами
+    
+    function displayFoodRecognitionResults(data) {
+      resultsEl.style.display = 'block';
+      
+      if (data.recognizedFoods && data.recognizedFoods.length > 0) {
+        displayFoods(data.recognizedFoods);
+        foodItemsEl.style.display = 'block';
+      }
+    }
+
+    function showIngredientsEditor() {
+      ingredientsEditorEl.style.display = 'block';
+      updateIngredientsEditor();
+    }
+
+    function updateIngredientsEditor() {
+      ingredientsListEl.innerHTML = currentIngredients.map((ingredient, index) => `
+        <div class="ingredient-item" id="ingredient-${index}">
+          <span class="ingredient-name">${ingredient}</span>
+          <div class="ingredient-actions">
+            <button class="ingredient-btn edit-btn" onclick="editIngredient(${index})">✏️</button>
+            <button class="ingredient-btn delete-btn" onclick="deleteIngredient(${index})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function editIngredient(index) {
+      const ingredientEl = document.getElementById(`ingredient-${index}`);
+      const currentName = currentIngredients[index];
+      
+      ingredientEl.innerHTML = `
+        <input type="text" class="ingredient-input" value="${currentName}" id="edit-input-${index}">
+        <div class="ingredient-actions">
+          <button class="ingredient-btn save-btn" onclick="saveIngredient(${index})">✓</button>
+          <button class="ingredient-btn delete-btn" onclick="cancelEdit(${index})">✖</button>
+        </div>
+      `;
+      
+      ingredientEl.classList.add('editing');
+      document.getElementById(`edit-input-${index}`).focus();
+    }
+
+    function saveIngredient(index) {
+      const input = document.getElementById(`edit-input-${index}`);
+      const newName = input.value.trim();
+      
+      if (newName && newName !== currentIngredients[index]) {
+        currentIngredients[index] = newName;
+      }
+      
+      updateIngredientsEditor();
+    }
+
+    function cancelEdit(index) {
+      updateIngredientsEditor();
+    }
+
+    function deleteIngredient(index) {
+      currentIngredients.splice(index, 1);
+      updateIngredientsEditor();
+    }
+
+    function addIngredient() {
+      const input = document.getElementById('newIngredient');
+      const newIngredient = input.value.trim();
+      
+      if (newIngredient && !currentIngredients.includes(newIngredient)) {
+        currentIngredients.push(newIngredient);
+        input.value = '';
+        updateIngredientsEditor();
+      }
+    }
+
+    // Обработка нажатия Enter в поле добавления ингредиента
+    document.addEventListener('DOMContentLoaded', function() {
+      const newIngredientInput = document.getElementById('newIngredient');
+      if (newIngredientInput) {
+        newIngredientInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            addIngredient();
+          }
+        });
+      }
+    });
+
+    // Генерация рецептов с обновленным списком ингредиентов
+    async function generateRecipes() {
+      if (currentIngredients.length === 0) {
+        alert('Добавьте хотя бы один ингредиент');
+        return;
+      }
+
+      showLoading('Генерируем рецепты...');
+      generateRecipesBtnEl.disabled = true;
+      recipesEl.style.display = 'none';
+
+      try {
+        // Подготавливаем данные для отправки
+        const ingredientsData = currentIngredients.map(name => ({
+          label: name.toLowerCase().replace(/\s+/g, '_'),
+          displayName: name,
+          confidence: 0.8
+        }));
+
+        const requestData = {
+          ingredients: ingredientsData,
+          filename: currentFilename
+        };
+
+        const response = await fetch(`${SERVER_URL}/generate-recipes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify(requestData)
+        });
+
+        let data = {};
+        try { data = await response.json(); } catch (_) {}
+
+        if (response.ok && data.ok) {
+          hideLoading();
+          
+          if (data.recipes && data.recipes.length > 0) {
+            displayRecipes(data.recipes);
+            recipesEl.style.display = 'block';
+            statusEl.innerHTML = '<div style="color: #28a745; text-align: center;">✅ Рецепты сгенерированы!</div>';
+          } else {
+            showError('Не удалось сгенерировать рецепты. Попробуйте ещё раз.');
+          }
+        } else {
+          hideLoading();
+          showError(data.error || 'Ошибка генерации рецептов');
+        }
+      } catch (error) {
+        console.error('Recipe generation error:', error);
+        hideLoading();
+        showError('Ошибка связи с сервером');
+      } finally {
+        generateRecipesBtnEl.disabled = false;
+      }
     }
   </script>
 </body>
