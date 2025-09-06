@@ -222,7 +222,7 @@
       margin: 16px 0;
       font-size: 14px;
     }
-    .ingredients-editor {
+    #recognizedIngredients {
       background: white;
       padding: 16px;
       border-radius: 12px;
@@ -243,10 +243,23 @@
       background: #e3f2fd;
       border-color: #2196f3;
     }
+    .ingredient-item.used-in-recipe {
+      background: #e8f5e8;
+      border-color: #4caf50;
+    }
     .ingredient-name {
       flex: 1;
       font-weight: 500;
       color: #333;
+    }
+    .ingredient-confidence {
+      background: #e3f2fd;
+      color: #1976d2;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+      margin-right: 8px;
     }
     .ingredient-input {
       flex: 1;
@@ -282,6 +295,11 @@
     .delete-btn {
       background: #ffebee;
       color: #c62828;
+    }
+    .used-check {
+      color: #4caf50;
+      font-size: 16px;
+      margin-right: 8px;
     }
     .add-ingredient {
       display: flex;
@@ -340,21 +358,13 @@
       <div id="serviceStatus" style="display: none;"></div>
       <input id="photoInput" type="file" accept="image/*" capture="environment" placeholder="Выберите или сделайте фото">
       <button id="uploadBtn">📷 Анализировать фото</button>
-      <button id="checkServicesBtn" style="background: #6c757d; margin-top: 5px;">🔍 Проверить сервисы</button>
       <div id="status"></div>
     </div>
 
     <div id="results" class="results" style="display: none;">
-      <div id="foodItems" style="display: none;">
+      <div id="recognizedIngredients" style="display: none;">
         <div class="section-title">
-          🥗 Распознанные продукты
-        </div>
-        <div class="food-items" id="foodList"></div>
-      </div>
-
-      <div id="ingredientsEditor" class="ingredients-editor" style="display: none;">
-        <div class="section-title">
-          ✏️ Редактировать ингредиенты
+          🥗 Распознанные ингредиенты
         </div>
         <div id="ingredientsList"></div>
         <div class="add-ingredient">
@@ -383,26 +393,61 @@
     const SERVER_URL = 'https://8838f8430a6a.ngrok-free.app';
 
     const uploadBtn = document.getElementById('uploadBtn');
-    const checkServicesBtn = document.getElementById('checkServicesBtn');
     const statusEl = document.getElementById('status');
     const serviceStatusEl = document.getElementById('serviceStatus');
     const resultsEl = document.getElementById('results');
-    const foodItemsEl = document.getElementById('foodItems');
-    const ingredientsEditorEl = document.getElementById('ingredientsEditor');
+    const recognizedIngredientsEl = document.getElementById('recognizedIngredients');
     const recipesEl = document.getElementById('recipes');
-    const foodListEl = document.getElementById('foodList');
     const ingredientsListEl = document.getElementById('ingredientsList');
     const recipeListEl = document.getElementById('recipeList');
     const generateRecipesBtnEl = document.getElementById('generateRecipesBtn');
 
     // Global variables
     let currentIngredients = [];
+    let ingredientConfidences = {}; // Store confidence scores
+    let usedIngredients = new Set(); // Track which ingredients are used in recipes
     let currentFilename = '';
 
-    // Check services on page load
-    checkServices();
+    // Russian translation map for food items
+    const foodTranslations = {
+      'mixed food': 'Смешанная еда',
+      'vegetables': 'Овощи',
+      'fruits': 'Фрукты',
+      'bread': 'Хлеб',
+      'dairy': 'Молочные продукты',
+      'meat': 'Мясо',
+      'fish': 'Рыба',
+      'eggs': 'Яйца',
+      'cheese': 'Сыр',
+      'milk': 'Молоко',
+      'butter': 'Масло',
+      'pasta': 'Макароны',
+      'rice': 'Рис',
+      'potato': 'Картофель',
+      'tomato': 'Помидор',
+      'onion': 'Лук',
+      'garlic': 'Чеснок',
+      'carrot': 'Морковь',
+      'apple': 'Яблоко',
+      'banana': 'Банан',
+      'orange': 'Апельсин',
+      'lemon': 'Лимон',
+      'cucumber': 'Огурец',
+      'cabbage': 'Капуста',
+      'lettuce': 'Салат',
+      'spinach': 'Шпинат',
+      'chicken': 'Курица',
+      'beef': 'Говядина',
+      'pork': 'Свинина',
+      'salmon': 'Лосось',
+      'mushroom': 'Грибы',
+      'bell pepper': 'Болгарский перец',
+      'broccoli': 'Брокколи',
+      'zucchini': 'Кабачки'
+    };
 
-    checkServicesBtn.addEventListener('click', checkServices);
+    // Auto-check services on page load
+    checkServices();
 
     uploadBtn.addEventListener('click', async () => {
       const fileInput = document.getElementById('photoInput');
@@ -421,9 +466,9 @@
       
       // Reset UI
       resultsEl.style.display = 'none';
-      foodItemsEl.style.display = 'none';
-      ingredientsEditorEl.style.display = 'none';
+      recognizedIngredientsEl.style.display = 'none';
       recipesEl.style.display = 'none';
+      usedIngredients.clear();
 
       try {
         // Отправляем запрос только на распознавание еды
@@ -442,14 +487,15 @@
           hideLoading();
           
           if (data.recognizedFoods && data.recognizedFoods.length > 0) {
-            // Показываем распознанные продукты
-            displayFoodRecognitionResults(data);
-            
-            // Подготавливаем редактор ингредиентов
-            currentIngredients = data.recognizedFoods.map(food => food.displayName);
+            // Подготавливаем список ингредиентов с переводом
+            currentIngredients = data.recognizedFoods.map(food => {
+              const translatedName = translateFoodName(food.displayName);
+              ingredientConfidences[translatedName] = food.confidence;
+              return translatedName;
+            });
             currentFilename = data.filename;
             
-            showIngredientsEditor();
+            showRecognizedIngredients();
             statusEl.innerHTML = '<div style="color: #28a745; text-align: center;">✅ Продукты распознаны! Отредактируйте список и нажмите "Сгенерировать рецепты"</div>';
           } else {
             hideLoading();
@@ -495,8 +541,6 @@
 
     async function checkServices() {
       console.log('🔍 Checking services...');
-      checkServicesBtn.disabled = true;
-      checkServicesBtn.textContent = '🔄 Проверка...';
       
       try {
         const response = await fetch(`${SERVER_URL}/status`, {
@@ -514,9 +558,6 @@
       } catch (error) {
         console.error('Service check failed:', error);
         serviceStatusEl.innerHTML = '<div class="error">❌ Ошибка проверки сервисов</div>';
-      } finally {
-        checkServicesBtn.disabled = false;
-        checkServicesBtn.textContent = '🔍 Проверить сервисы';
       }
     }
 
@@ -545,17 +586,67 @@
           <div style="margin-top: 8px; padding-left: 16px;">
       `;
       
-      status.services.forEach(service => {
-        const statusIcon = service.status === 'available' ? '✅' : 
-                          service.status === 'not_configured' ? '⚠️' : '❌';
+      // Show working services only
+      const workingServices = status.services.filter(service => service.status === 'available');
+      
+      if (workingServices.length > 0) {
+        html += '<div style="margin-bottom: 12px; font-weight: 500; color: #28a745;">✅ Работающие сервисы:</div>';
         
-        html += `
-          <div style="margin-bottom: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-            <div style="font-weight: 500;">${statusIcon} ${service.name}</div>
-            <div style="color: #666; font-size: 12px;">${service.message}</div>
-          </div>
-        `;
-      });
+        workingServices.forEach(service => {
+          html += `
+            <div style="margin-bottom: 8px; padding: 8px; background: #e8f5e8; border-radius: 4px; border-left: 3px solid #4caf50;">
+              <div style="font-weight: 500;">✅ ${service.name}</div>
+              <div style="color: #666; font-size: 12px;">${service.message}</div>
+            </div>
+          `;
+        });
+        
+        // Show model details for OpenRouter
+        const openRouterService = workingServices.find(s => s.name.includes('OpenRouter'));
+        if (openRouterService) {
+          html += `
+            <div style="margin-top: 12px; padding: 8px; background: #f0f9ff; border-radius: 4px;">
+              <div style="font-weight: 500; color: #0369a1; margin-bottom: 4px;">🤖 Доступные модели для генерации рецептов:</div>
+              <div style="font-size: 11px; color: #666;">
+                • Llama 3.2 3B (бесплатная)<br>
+                • Gemma 2 9B (бесплатная)<br>
+                • Mistral 7B (бесплатная)<br>
+                • Claude 3 Haiku (платная)<br>
+                • GPT-3.5 Turbo (платная)
+              </div>
+            </div>
+          `;
+        }
+        
+        // Show vision model details
+        const visionService = workingServices.find(s => s.name.includes('Vision') || s.name.includes('Ninjas'));
+        if (visionService) {
+          html += `
+            <div style="margin-top: 8px; padding: 8px; background: #f0f9ff; border-radius: 4px;">
+              <div style="font-weight: 500; color: #0369a1; margin-bottom: 4px;">👁️ Модель для распознавания еды:</div>
+              <div style="font-size: 11px; color: #666;">
+                • API Ninjas Image Analysis (бесплатная)
+              </div>
+            </div>
+          `;
+        }
+      }
+      
+      const nonWorkingServices = status.services.filter(service => service.status !== 'available');
+      if (nonWorkingServices.length > 0) {
+        html += '<div style="margin-top: 12px; margin-bottom: 8px; font-weight: 500; color: #dc3545;">❌ Недоступные сервисы:</div>';
+        
+        nonWorkingServices.forEach(service => {
+          if (!service.name.includes('HuggingFace')) { // Skip old HuggingFace references
+            html += `
+              <div style="margin-bottom: 8px; padding: 8px; background: #fff3cd; border-radius: 4px; border-left: 3px solid #ffc107;">
+                <div style="font-weight: 500;">⚠️ ${service.name}</div>
+                <div style="color: #666; font-size: 12px;">${service.message}</div>
+              </div>
+            `;
+          }
+        });
+      }
       
       html += `
           </div>
@@ -566,50 +657,58 @@
       serviceStatusEl.style.display = 'block';
     }
 
-    function displayResults(data) {
-      resultsEl.style.display = 'block';
-      
-      // Display recognized foods
-      if (data.recognizedFoods && data.recognizedFoods.length > 0) {
-        displayFoods(data.recognizedFoods);
-        foodItemsEl.style.display = 'block';
-      } else {
-        foodItemsEl.style.display = 'none';
-        if (data.recognitionError) {
-          showError(`Ошибка распознавания: ${data.recognitionError}`);
-        } else {
-          statusEl.innerHTML = '<div style="color: #f39c12; text-align: center;">🤔 Не удалось автоматически распознать продукты. Попробуйте другое фото или опишите продукты в чате бота.</div>';
-        }
-      }
-
-      // Display recipes
-      if (data.recipes && data.recipes.length > 0) {
-        displayRecipes(data.recipes);
-        recipesEl.style.display = 'block';
-      } else {
-        recipesEl.style.display = 'none';
-        if (data.recipeError && data.recognizedFoods && data.recognizedFoods.length > 0) {
-          showError(`Ошибка генерации рецептов: ${data.recipeError}`);
-        }
-      }
-
-      if (!data.recognizedFoods?.length && !data.recipes?.length) {
-        statusEl.innerHTML = '<div class="error">😕 Не удалось обработать изображение. Попробуйте другое фото.</div>';
-      } else {
-        statusEl.innerHTML = '<div style="color: #28a745; text-align: center;">✅ Обработка завершена!</div>';
-      }
+    // Translation function
+    function translateFoodName(englishName) {
+      const lowerName = englishName.toLowerCase();
+      return foodTranslations[lowerName] || englishName;
     }
 
-    function displayFoods(foods) {
-      foodListEl.innerHTML = foods.map(food => `
-        <div class="food-item">
-          <span class="food-name">${food.displayName}${food.suggested ? ' 🤖' : ''}</span>
-          <span class="confidence">${Math.round(food.confidence * 100)}%</span>
-        </div>
-      `).join('');
+    // New combined ingredients interface
+    function showRecognizedIngredients() {
+      resultsEl.style.display = 'block';
+      recognizedIngredientsEl.style.display = 'block';
+      updateIngredientsEditor();
+    }
+
+    function updateIngredientsEditor() {
+      ingredientsListEl.innerHTML = currentIngredients.map((ingredient, index) => {
+        const confidence = ingredientConfidences[ingredient];
+        const isUsedInRecipe = usedIngredients.has(ingredient.toLowerCase());
+        
+        return `
+          <div class="ingredient-item ${isUsedInRecipe ? 'used-in-recipe' : ''}" id="ingredient-${index}">
+            ${isUsedInRecipe ? '<span class="used-check">✓</span>' : ''}
+            <span class="ingredient-name">${ingredient}</span>
+            ${confidence ? `<span class="ingredient-confidence">${Math.round(confidence * 100)}%</span>` : ''}
+            <div class="ingredient-actions">
+              <button class="ingredient-btn edit-btn" onclick="editIngredient(${index})">✏️</button>
+              <button class="ingredient-btn delete-btn" onclick="deleteIngredient(${index})">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     function displayRecipes(recipes) {
+      // Mark ingredients used in recipes
+      usedIngredients.clear();
+      recipes.forEach(recipe => {
+        if (recipe.ingredients) {
+          recipe.ingredients.forEach(ingredient => {
+            const lowerIngredient = ingredient.toLowerCase();
+            currentIngredients.forEach(currentIng => {
+              if (lowerIngredient.includes(currentIng.toLowerCase()) || 
+                  currentIng.toLowerCase().includes(lowerIngredient.split(' ')[0])) {
+                usedIngredients.add(currentIng.toLowerCase());
+              }
+            });
+          });
+        }
+      });
+      
+      // Update ingredients list to show checkmarks
+      updateIngredientsEditor();
+      
       recipeListEl.innerHTML = recipes.map(recipe => `
         <div class="recipe">
           <div class="recipe-title">${recipe.name || recipe.title || 'Unnamed Recipe'}</div>
@@ -628,34 +727,6 @@
             ${recipe.instructions.map(step => `
               <div class="instruction-step">${step}</div>
             `).join('')}
-          </div>
-        </div>
-      `).join('');
-    }
-
-    // Новые функции для работы с ингредиентами
-    
-    function displayFoodRecognitionResults(data) {
-      resultsEl.style.display = 'block';
-      
-      if (data.recognizedFoods && data.recognizedFoods.length > 0) {
-        displayFoods(data.recognizedFoods);
-        foodItemsEl.style.display = 'block';
-      }
-    }
-
-    function showIngredientsEditor() {
-      ingredientsEditorEl.style.display = 'block';
-      updateIngredientsEditor();
-    }
-
-    function updateIngredientsEditor() {
-      ingredientsListEl.innerHTML = currentIngredients.map((ingredient, index) => `
-        <div class="ingredient-item" id="ingredient-${index}">
-          <span class="ingredient-name">${ingredient}</span>
-          <div class="ingredient-actions">
-            <button class="ingredient-btn edit-btn" onclick="editIngredient(${index})">✏️</button>
-            <button class="ingredient-btn delete-btn" onclick="deleteIngredient(${index})">🗑️</button>
           </div>
         </div>
       `).join('');
@@ -682,6 +753,12 @@
       const newName = input.value.trim();
       
       if (newName && newName !== currentIngredients[index]) {
+        // Update confidence mapping
+        const oldName = currentIngredients[index];
+        if (ingredientConfidences[oldName]) {
+          ingredientConfidences[newName] = ingredientConfidences[oldName];
+          delete ingredientConfidences[oldName];
+        }
         currentIngredients[index] = newName;
       }
       
@@ -693,6 +770,8 @@
     }
 
     function deleteIngredient(index) {
+      const deletedName = currentIngredients[index];
+      delete ingredientConfidences[deletedName];
       currentIngredients.splice(index, 1);
       updateIngredientsEditor();
     }
@@ -703,6 +782,7 @@
       
       if (newIngredient && !currentIngredients.includes(newIngredient)) {
         currentIngredients.push(newIngredient);
+        ingredientConfidences[newIngredient] = 0.8; // Default confidence for manually added ingredients
         input.value = '';
         updateIngredientsEditor();
       }
