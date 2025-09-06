@@ -443,7 +443,13 @@
       'mushroom': 'Грибы',
       'bell pepper': 'Болгарский перец',
       'broccoli': 'Брокколи',
-      'zucchini': 'Кабачки'
+      'zucchini': 'Кабачки',
+      // Дополнительные переводы для английских слов из примера
+      'vegetable': 'Овощи',
+      'pasture': 'Зелень',
+      'pepper': 'Перец',
+      'aliment': 'Продукт питания',
+      'картошка': 'Картофель' // Нормализация
     };
 
     // Auto-check services on page load
@@ -619,13 +625,13 @@
         }
         
         // Show vision model details
-        const visionService = workingServices.find(s => s.name.includes('Vision') || s.name.includes('Ninjas'));
+        const visionService = workingServices.find(s => s.name.includes('Vision') || s.name.includes('Ninjas') || s.name.includes('Free'));
         if (visionService) {
           html += `
             <div style="margin-top: 8px; padding: 8px; background: #f0f9ff; border-radius: 4px;">
               <div style="font-weight: 500; color: #0369a1; margin-bottom: 4px;">👁️ Модель для распознавания еды:</div>
               <div style="font-size: 11px; color: #666;">
-                • API Ninjas Image Analysis (бесплатная)
+                • Free Vision API (бесплатная)
               </div>
             </div>
           `;
@@ -660,7 +666,21 @@
     // Translation function
     function translateFoodName(englishName) {
       const lowerName = englishName.toLowerCase();
-      return foodTranslations[lowerName] || englishName;
+      
+      // Прямое соответствие
+      if (foodTranslations[lowerName]) {
+        return foodTranslations[lowerName];
+      }
+      
+      // Поиск по частичному совпадению
+      for (const [eng, rus] of Object.entries(foodTranslations)) {
+        if (lowerName.includes(eng) || eng.includes(lowerName)) {
+          return rus;
+        }
+      }
+      
+      // Если перевод не найден, возвращаем оригинал с заглавной буквы
+      return englishName.charAt(0).toUpperCase() + englishName.slice(1);
     }
 
     // New combined ingredients interface
@@ -807,9 +827,11 @@
         return;
       }
 
-      showLoading('Генерируем рецепты...');
+      showLoading('Генерируем рецепты... (это может занять 20-30 секунд)');
       generateRecipesBtnEl.disabled = true;
       recipesEl.style.display = 'none';
+      
+      const startTime = Date.now();
 
       try {
         // Подготавливаем данные для отправки
@@ -842,7 +864,7 @@
           if (data.recipes && data.recipes.length > 0) {
             displayRecipes(data.recipes);
             recipesEl.style.display = 'block';
-            statusEl.innerHTML = '<div style="color: #28a745; text-align: center;">✅ Рецепты сгенерированы!</div>';
+            statusEl.innerHTML = `<div style="color: #28a745; text-align: center;">✅ Готово! Сгенерировано ${data.recipes.length} рецепта за ${Math.round((Date.now() - startTime) / 1000)} сек.</div>`;
           } else {
             showError('Не удалось сгенерировать рецепты. Попробуйте ещё раз.');
           }
